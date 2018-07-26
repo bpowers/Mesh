@@ -53,6 +53,9 @@ public:
 
   // semiansiheap ensures we never see size == 0
   inline void *ATTRIBUTE_ALWAYS_INLINE malloc(size_t sz) {
+
+    d_assert(_global != nullptr);
+
     uint32_t sizeClass = 0;
 
     // if the size isn't in our sizemap it is a large alloc

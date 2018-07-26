@@ -14,11 +14,14 @@
 
 #include "internal.h"
 
+#include "array.h"
 #include "miniheap.h"
 
 using mesh::debug;
 
 namespace mesh {
+
+typedef Array<MiniHeap, 63> MiniHeapArray;
 
 class Freelist {
 private:
@@ -64,9 +67,10 @@ public:
   }
 
   MiniHeap *detach() {
-    d_assert(_attachedMiniheap != nullptr);
-    const auto mh = _attachedMiniheap;
-    _attachedMiniheap = nullptr;
+    d_assert(_attachedMiniheaps[_attachedOff] != nullptr);
+    const auto mh = _attachedMiniheaps[_attachedOff];
+    _attachedMiniheaps.clear();
+    _attachedOff = 0;
     _start = 0;
     _end = 0;
     return mh;
@@ -119,18 +123,24 @@ public:
   }
 
   inline MiniHeap *getAttached() const {
-    return _attachedMiniheap;
+    return _attachedMiniheaps[_attachedOff];
   }
 
   inline bool isAttached() const {
-    return _attachedMiniheap != nullptr;
+    return _attachedMiniheaps.size() > 0;
   }
 
   // an attach takes ownership of the reference to mh
   inline void attach(void *arenaBegin, MiniHeap *mh) {
-    d_assert(mh->isAttached());
-    d_assert(_attachedMiniheap == nullptr);
-    _attachedMiniheap = mh;
+#ifndef NDEBUG
+    for (MiniHeap *mh : _attachedMiniheaps) {
+      d_assert(mh->isAttached());
+    }
+#endif
+    _attachedOff = 0;
+    _attachedMiniheaps.append(mh);
+    d_assert(_attachedMiniheaps.size() > 0);
+    mh = _attachedMiniheaps[_attachedOff];
 
     _start = mh->getSpanStart(arenaBegin);
     _end = _start + mh->spanSize();
@@ -176,22 +186,25 @@ public:
   }
 
 private:
-  uint32_t _objectSize{0};                              // 4   4
-  float _objectSizeReciprocal{0.0};                     // 4   8
-  uintptr_t _start{0};                                  // 8   16
-  uintptr_t _end{0};                                    // 8   24
-  MiniHeap *_attachedMiniheap{nullptr};                 // 8   32
-  MWC _prng;                                            // 8   40
-  uint16_t _maxCount{0};                                // 2   42
-  uint16_t _off{0};                                     // 2   44
-  volatile uint8_t _lastOff{0};                         // 1   45
-  uint8_t __padding[15];                                // 15  64
-  uint8_t _list[kMaxFreelistLength] CACHELINE_ALIGNED;  // 256 320
+  uint32_t _objectSize{0};                               // 4   4
+  float _objectSizeReciprocal{0.0};                      // 4   8
+  uintptr_t _start{0};                                   // 8   16
+  uintptr_t _end{0};                                     // 8   24
+  size_t _attachedOff{0};                                // 8   32
+  MWC _prng;                                             // 8   40
+  uint16_t _maxCount{0};                                 // 2   42
+  uint16_t _off{0};                                      // 2   44
+  volatile uint8_t _lastOff{0};                          // 1   45
+  uint8_t __padding[15];                                 // 15  64
+  uint8_t _list[kMaxFreelistLength] CACHELINE_ALIGNED;   // 256 320
+  MiniHeapArray _attachedMiniheaps CACHELINE_ALIGNED{};  // 512 832
 };
+
+static_assert(sizeof(MiniHeapArray) == 512, "MiniHeapArray not expected size!");
 
 static_assert(HL::gcd<sizeof(Freelist), CACHELINE_SIZE>::value == CACHELINE_SIZE,
               "Freelist not multiple of cacheline size!");
-static_assert(sizeof(Freelist) == 320, "Freelist not expected size!");
+static_assert(sizeof(Freelist) == 320 + 512, "Freelist not expected size!");
 }  // namespace mesh
 
 #endif  // MESH__FREELIST_H
