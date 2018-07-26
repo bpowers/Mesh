@@ -32,6 +32,14 @@ ThreadLocalHeap *ThreadLocalHeap::GetHeap() {
 void *ThreadLocalHeap::smallAllocSlowpath(size_t sizeClass) {
   Freelist &freelist = _freelist[sizeClass];
 
+  // we grab multiple MiniHeaps at a time from the global heap.
+  // sometimes it is possible to refill the freelist from a
+  // not-yet-used MiniHeap we already have, without grabbing a lock.
+  if (freelist.localRefill()) {
+    _last = &freelist;
+    return freelist.malloc();
+  }
+
   const size_t sizeMax = SizeMap::ByteSizeForClass(sizeClass);
 
   _global->allocSmallMiniheaps(sizeClass, sizeMax, freelist.miniheaps());

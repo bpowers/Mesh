@@ -82,6 +82,10 @@ public:
     return _maxCount;
   }
 
+  inline bool ATTRIBUTE_ALWAYS_INLINE localRefill() {
+    return false;
+  }
+
   // number of items in the list
   inline size_t ATTRIBUTE_ALWAYS_INLINE length() const {
     return _maxCount - _off;
