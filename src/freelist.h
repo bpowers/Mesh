@@ -21,8 +21,6 @@ using mesh::debug;
 
 namespace mesh {
 
-typedef Array<MiniHeap, 63> MiniHeapArray;
-
 class Freelist {
 private:
   DISALLOW_COPY_AND_ASSIGN(Freelist);
@@ -131,16 +129,15 @@ public:
   }
 
   // an attach takes ownership of the reference to mh
-  inline void attach(void *arenaBegin, MiniHeap *mh) {
+  inline void attach(void *arenaBegin) {
+    d_assert(_attachedMiniheaps.size() > 0);
 #ifndef NDEBUG
     for (MiniHeap *mh : _attachedMiniheaps) {
       d_assert(mh->isAttached());
     }
 #endif
     _attachedOff = 0;
-    _attachedMiniheaps.append(mh);
-    d_assert(_attachedMiniheaps.size() > 0);
-    mh = _attachedMiniheaps[_attachedOff];
+    MiniHeap *mh = _attachedMiniheaps[_attachedOff];
 
     _start = mh->getSpanStart(arenaBegin);
     _end = _start + mh->spanSize();
@@ -183,6 +180,10 @@ public:
     // so that we don't separately have to check !isAttached() in the
     // malloc fastpath.
     _off = _maxCount;
+  }
+
+  inline MiniHeapArray &miniheaps() {
+    return _attachedMiniheaps;
   }
 
 private:

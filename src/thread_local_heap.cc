@@ -32,20 +32,11 @@ ThreadLocalHeap *ThreadLocalHeap::GetHeap() {
 void *ThreadLocalHeap::smallAllocSlowpath(size_t sizeClass) {
   Freelist &freelist = _freelist[sizeClass];
 
-  MiniHeap *oldMH = nullptr;
-  // we are in the slowlist because we couldn't allocate out of this
-  // freelist.  If there was an attached miniheap it is now full, so
-  // detach it
-  if (likely(freelist.isAttached())) {
-    oldMH = freelist.detach();
-  }
-
   const size_t sizeMax = SizeMap::ByteSizeForClass(sizeClass);
 
-  MiniHeap *mh = _global->allocSmallMiniheap(sizeClass, sizeMax, oldMH);
-  d_assert(mh != nullptr);
+  _global->allocSmallMiniheaps(sizeClass, sizeMax, freelist.miniheaps());
 
-  freelist.attach(_global->arenaBegin(), mh);
+  freelist.attach(_global->arenaBegin());
 
   d_assert(freelist.isAttached());
   d_assert(!freelist.isExhausted());

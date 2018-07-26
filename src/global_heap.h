@@ -112,16 +112,17 @@ public:
     return ptr;
   }
 
-  inline MiniHeap *allocSmallMiniheap(int sizeClass, size_t objectSize, MiniHeap *oldMH) {
+  inline void allocSmallMiniheaps(int sizeClass, size_t objectSize, MiniHeapArray &miniheaps) {
     lock_guard<mutex> lock(_miniheapLock);
 
     d_assert(sizeClass >= 0);
 
     // ensure this flag is always set with the miniheap lock held
-    if (oldMH != nullptr) {
+    for (MiniHeap *oldMH : miniheaps) {
       oldMH->unsetAttached();
       _littleheaps[sizeClass].postFree(oldMH, oldMH->inUseCount());
     }
+    miniheaps.clear();
 
     d_assert(objectSize <= _maxObjectSize);
 
@@ -134,13 +135,16 @@ public:
     d_assert(sizeClass >= 0);
     d_assert(sizeClass < kNumBins);
 
+    d_assert(miniheaps.count() == 0);
+
     // check our bins for a miniheap to reuse
     MiniHeap *existing = _littleheaps[sizeClass].selectForReuse();
     if (existing != nullptr) {
       d_assert(!existing->isMeshed());
       d_assert(!existing->isAttached());
       existing->setAttached();
-      return existing;
+      miniheaps.append(existing);
+      return;
     }
 
     // if we have objects bigger than the size of a page, allocate
@@ -153,7 +157,8 @@ public:
     auto mh = allocMiniheapLocked(sizeClass, pageCount, objectCount, objectSize);
     d_assert(!mh->isAttached());
     mh->setAttached();
-    return mh;
+    miniheaps.append(mh);
+    return;
   }
 
   // large, page-multiple allocations

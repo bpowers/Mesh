@@ -10,6 +10,7 @@
 #include <atomic>
 #include <random>
 
+#include "array.h"
 #include "bitmap.h"
 #include "internal.h"
 
@@ -404,6 +405,8 @@ protected:
   const float _objectSizeReciprocal;  // 4        60
   MiniHeapID _nextMiniHeap{};         // 4        64
 };
+
+typedef Array<MiniHeap, 63> MiniHeapArray;
 
 static_assert(sizeof(mesh::internal::Bitmap) == 32, "Bitmap too big!");
 static_assert(sizeof(MiniHeap) == 64, "MiniHeap too big!");

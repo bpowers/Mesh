@@ -27,9 +27,16 @@ static void meshTest(bool invert) {
 
   ASSERT_EQ(gheap.getAllocatedMiniheapCount(), 0UL);
 
+  MiniHeapArray array{};
+
   // allocate two miniheaps for the same object size from our global heap
-  MiniHeap *mh1 = gheap.allocSmallMiniheap(SizeMap::SizeClass(StrLen), StrLen, nullptr);
-  MiniHeap *mh2 = gheap.allocSmallMiniheap(SizeMap::SizeClass(StrLen), StrLen, nullptr);
+  gheap.allocSmallMiniheaps(SizeMap::SizeClass(StrLen), StrLen, array);
+  MiniHeap *mh1 = array[0];
+  array.clear();
+
+  gheap.allocSmallMiniheaps(SizeMap::SizeClass(StrLen), StrLen, array);
+  MiniHeap *mh2 = array[0];
+  array.clear();
 
   ASSERT_EQ(gheap.getAllocatedMiniheapCount(), 2UL);
 
